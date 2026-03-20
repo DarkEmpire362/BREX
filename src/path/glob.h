@@ -212,7 +212,9 @@ namespace brex {
                     str.append(f->toBSQONFormat());
                     str.push_back('/');
                 }
-                str[str.length() - 1] = ' ';
+                if (str.length() > 0) {
+                    str[str.length() - 1] = ' ';
+                }
                 return str;
             }
 
@@ -222,7 +224,9 @@ namespace brex {
                     str.append(f->toBSQStandard());
                     str.push_back('/');
                 }
-                str[str.length() - 1] = ' ';
+                if (str.length() > 0) {
+                    str[str.length() - 1] = ' ';
+                }
                 return str;
             }
     };

@@ -42,6 +42,13 @@ namespace brex {
     }
 
     bool match(FragmentMachine* machine, std::string str, bool unicode) {
+        size_t reset_state = 0;
+        size_t current_state = 0;
+        size_t final_state = machine->states.size();
+        if (final_state == 0) {
+            return str.length() == 0;
+        }
+
         std::optional<std::vector<RegexChar>> char_codes;
         if (unicode) {
             char_codes = unescapeUnicodeRegexLiteral((uint8_t*) str.data(), str.length());
@@ -62,9 +69,6 @@ namespace brex {
         size_t end_pos = cc.size();
        
         bool reset_available = false;
-        size_t reset_state = 0;
-        size_t current_state = 0;
-        size_t final_state = machine->states.size();
         while (start_pos < end_pos) {
             // std::cout << (int) current_state << " " << final_state << std::endl;
             if (cc[start_pos] == '/') {
@@ -97,6 +101,6 @@ namespace brex {
                 current_state = reset_state;
             }
         }
-        return false;
+        return current_state == final_state;
     }
 }

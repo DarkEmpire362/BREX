@@ -291,6 +291,14 @@ namespace brex {
                 auto parser = GlobParser(data, datalen, is_unicode);
                 return new Glob(parser.parseGlobFragments());
             }
+
+            static Glob* parseGlobCString(const std::string& str) {
+                return GlobParser::parseGlob((uint8_t*) str.data(), str.length(), false);
+            }
+
+            static Glob* parseGlobUnicodeString(const std::u8string& str) {
+                return GlobParser::parseGlob((uint8_t*) str.data(), str.length(), false);
+            }
     };
 }
 

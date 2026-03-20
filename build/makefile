@@ -6,6 +6,7 @@ RE_DIR=$(SRC_DIR)regex/
 PTH_DIR=$(SRC_DIR)path/
 
 REGEX_TEST_SRC_DIR=$(MAKE_PATH)/../test/regex/
+PATH_TEST_SRC_DIR=$(MAKE_PATH)/../test/path/
 
 OUT_EXE=$(BUILD_DIR)output/
 OUT_OBJ=$(BUILD_DIR)output/obj/
@@ -42,6 +43,7 @@ PATH_SOURCES=$(PTH_DIR)glob_compiler.cpp
 PATH_OBJS=$(OUT_OBJ)glob_compiler.o
 
 REGEX_TEST_SOURCES=$(REGEX_TEST_SRC_DIR)main.cpp $(REGEX_TEST_SRC_DIR)validate_string.cpp $(REGEX_TEST_SRC_DIR)parsing_ok.cpp $(REGEX_TEST_SRC_DIR)parsing_err.cpp $(REGEX_TEST_SRC_DIR)test.cpp $(REGEX_TEST_SRC_DIR)other_ops.cpp $(REGEX_TEST_SRC_DIR)docs.cpp $(REGEX_TEST_SRC_DIR)system.cpp $(REGEX_TEST_SRC_DIR)bsqir.cpp
+PATH_TEST_SORUCES=$(PATH_TEST_SRC_DIR)main.cpp $(PATH_TEST_SRC_DIR)test.cpp
 
 MAKEFLAGS += -j4
 
@@ -92,8 +94,15 @@ testfiles: $(COMMON_HEADERS) $(REGEX_HEADERS) $(OUT_EXE)libbrex.a $(REGEX_TEST_S
 	@mkdir -p $(BIN_DIR)
 	$(CPP) $(CPPFLAGS_TEST) -L$(LIB_PATH) $(JSON_INCLUDES) -o $(BIN_DIR)regex_test $(REGEX_TEST_SOURCES) $(OUT_EXE)libbrex.a -lboost_unit_test_framework
 
+glob_testfiles: $(COMMON_HEADERS) $(PATH_HEADERS) $(OUT_EXE)libbrex.a $(GLOB_TEST_SOURCES)
+	@mkdir -p $(BIN_DIR)
+	$(CPP) $(CPPFLAGS_TEST) -L$(LIB_PATH) $(JSON_INCLUDES) -o $(BIN_DIR)path_test $(PATH_TEST_SORUCES) $(OUT_EXE)libbrex.a -lboost_unit_test_framework
+
 test: testfiles
 	$(BIN_DIR)regex_test --report_level=short --color_output
+
+glob_test: glob_testfiles
+	$(BIN_DIR)path_test --report_level=detailed --color_output
 
 clean:
 	rm -rf $(OUT_EXE)* $(OUT_OBJ)*.o $(BIN_DIR)*
