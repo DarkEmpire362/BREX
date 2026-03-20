@@ -26,8 +26,12 @@ namespace brex
     }
 
     std::set<size_t>* ExpressionCompiler::compileLiteral(LiteralExpression* expr, std::set<size_t>* next_states) {
-        this->max_index++;
-        this->states.push_back(new GroundState(expr->code, next_states, nullptr));
+        std::set<size_t>* cnext = new std::set<size_t>(*next_states);
+        for (auto it = expr->codes.rbegin(); it != expr->codes.rend(); it++) {
+            this->max_index++;
+            this->states.push_back(new GroundState(*it, cnext, nullptr));
+            cnext = new std::set<size_t>({this->max_index});
+        }
         return new std::set<size_t>({this->max_index});
     }
 

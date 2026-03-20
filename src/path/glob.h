@@ -22,6 +22,7 @@ namespace brex {
             virtual ~GlobFragment() {;}
 
             virtual std::u8string toBSQONFormat() const = 0;
+            virtual std::string toBSQStandard() const = 0;
     };
 
     /// @brief Glob Expression Types
@@ -44,6 +45,7 @@ namespace brex {
             virtual bool needsVarEnc() const { return false; } // Needs Variable Enclosure, ie ${<var_name>}
 
             virtual std::u8string toBSQONFormat() const = 0;
+            virtual std::string toBSQStandard() const = 0;
     };
 
     /// @brief Glob Expression-Containing Fragment
@@ -57,6 +59,10 @@ namespace brex {
             virtual std::u8string toBSQONFormat() const override final {
                 return expression->toBSQONFormat();
             }
+
+            virtual std::string toBSQStandard() const override final {
+                return expression->toBSQStandard();
+            }
     };
 
     /// @brief Glob Recursive Wildcard Fragment
@@ -67,6 +73,10 @@ namespace brex {
 
             virtual std::u8string toBSQONFormat() const override final {
                 return u8"**";
+            }
+
+            virtual std::string toBSQStandard() const override final {
+                return "**";
             }
     };
 
@@ -84,27 +94,39 @@ namespace brex {
                 }
                 return str;
             }
+
+            virtual std::string toBSQStandard() const override final {
+                auto str = std::string();
+                for (auto expr : subexprs) {
+                    str.append(expr->toBSQStandard());
+                }
+                return str;
+            }
     };
 
     /// @brief Glob Expression containing a character (ascii or unicode)
     class LiteralExpression : public GlobExpression { // Regex analog is 'LiteralOpt'
         public:
-            const RegexChar code;
+            const std::vector<RegexChar> codes;
             const bool isunicode;
 
-            LiteralExpression(RegexChar code, bool isunicode) : GlobExpression(GlobExpressionTag::Literal), code(code), isunicode(isunicode) {;}
+            LiteralExpression(std::vector<RegexChar> code, bool isunicode) : GlobExpression(GlobExpressionTag::Literal), codes(code), isunicode(isunicode) {;}
             virtual ~LiteralExpression() = default;
 
             virtual std::u8string toBSQONFormat() const override final {
                 if (this->isunicode) {
-                    std::vector<uint8_t> bytes = escapeRegexUnicodeLiteralCharBuffer({this->code});
-                    return u8"'" + std::u8string(bytes.begin(), bytes.end()) + u8"'";
+                    std::vector<uint8_t> bytes = escapeRegexUnicodeLiteralCharBuffer(this->codes);
+                    return std::u8string(bytes.begin(), bytes.end());
 
                 }
                 else {
-                    std::vector<uint8_t> bytes = escapeRegexCLiteralCharBuffer({this->code});
-                    return u8"'" + std::u8string(bytes.begin(), bytes.end()) + u8"'";
+                    std::vector<uint8_t> bytes = escapeRegexCLiteralCharBuffer(this->codes);
+                    return std::u8string(bytes.begin(), bytes.end());
                 }
+            }
+
+            virtual std::string toBSQStandard() const override final {
+                return processRegexCharsToBsqStandard(this->codes);
             }
     };
 
@@ -127,6 +149,16 @@ namespace brex {
                 str[str.length() - 1] = ')';
                 return str;
             }
+
+            virtual std::string toBSQStandard() const override final {
+                auto str = std::string("(");
+                for (auto expr: exprs) {
+                    str.append(expr->toBSQStandard());
+                    str.push_back('|');
+                }
+                str[str.length() - 1] = ')';
+                return str;
+            }
     };
 
     /// @brief Glob Expression that marks some identifier which can be replaced later.
@@ -135,6 +167,7 @@ namespace brex {
             // I don't actually care that the unicode character is or looks like, I just want to
             // make sure the bytes are the same.
 
+            // TODO: Un-unicode this, u8strings are a pain.
             const std::u8string name;
 
             SubstitutionExpression(std::u8string name) : GlobExpression(GlobExpressionTag::Substitution), name(name) {;}
@@ -142,6 +175,11 @@ namespace brex {
 
             virtual std::u8string toBSQONFormat() const override final {
                 return u8"${" + this->name + u8"}"; 
+            }
+            
+            virtual std::string toBSQStandard() const override final {
+                std::string s = std::string(this->name.begin(), this->name.end());
+                return "${" + s + "}";
             }
     };
 
@@ -154,6 +192,10 @@ namespace brex {
             virtual std::u8string toBSQONFormat() const override final {
                 return u8"*";
             }
+
+            virtual std::string toBSQStandard() const override final {
+                return "*";
+            }
     };
 
     /// @brief Root of a glob AST, made up of a sequence of fragments
@@ -164,10 +206,20 @@ namespace brex {
             Glob(std::vector<const GlobFragment*> fragments) : fragments(fragments) {;}
             ~Glob() = default;
 
-            std::u8string toBSQStandard() const {
+            std::u8string toBSQONFormat() const {
                 auto str = std::u8string();
                 for (auto f : fragments) {
                     str.append(f->toBSQONFormat());
+                    str.push_back('/');
+                }
+                str[str.length() - 1] = ' ';
+                return str;
+            }
+
+            std::string toBSQStandard() const {
+                auto str = std::string();
+                for (auto f : fragments) {
+                    str.append(f->toBSQStandard());
                     str.push_back('/');
                 }
                 str[str.length() - 1] = ' ';

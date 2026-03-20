@@ -44,8 +44,8 @@ namespace brex {
                     }
                 }
                 defaults += "}";
-
-                return "{ Ground State. On '" + std::string({(char)this->activator}) + "': " + next_states + ", Default: " + defaults + " }";
+                std::vector<uint8_t> bytes = extractRegexCharToBytes(this->activator);
+                return "{ Ground State. On '" + std::string(bytes.begin(), bytes.end()) + "': " + next_states + ", Default: " + defaults + " }";
             }
     };
 

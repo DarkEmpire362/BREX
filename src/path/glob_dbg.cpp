@@ -6,9 +6,10 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
-    std::u8string str = u8"w(o|y)rm";
-    auto glob = brex::GlobParser::parseGlob((uint8_t*)str.c_str(), str.length(), false);
+    std::string str = "(pickle|🥒)";
+    auto glob = brex::GlobParser::parseGlob((uint8_t*) str.data(), str.length(), true);
     auto compiled_glob = brex::GlobCompiler::compile(glob);
     auto machine = compiled_glob;
-    std::cout << (int) brex::match(machine, "wyrm") << std::endl;
+    std::cout << glob->toBSQStandard() << std::endl;
+    std::cout << (int) brex::match(machine, "🥒", true) << std::endl;
 }

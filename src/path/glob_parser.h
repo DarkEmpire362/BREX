@@ -1,6 +1,7 @@
 #pragma once
 #include "../common.h"
 #include "glob.h"
+#include <iostream>
 
 // Default path separator
 #define BREX_GLOB_PATHSEP '/'
@@ -61,6 +62,13 @@ namespace brex {
                 return *this->cpos;
             }
 
+            inline uint8_t isScopeChanging() const {
+                return *this->cpos == BREX_GLOB_OPEN_UNION ||
+                       *this->cpos == BREX_GLOB_SEP_UNION ||
+                       *this->cpos == BREX_GLOB_CLOSE_UNION ||
+                       *this->cpos == BREX_GLOB_PATHSEP;
+            }
+
             void advance() {
                 if (!this->isEOS()) {
                     this->cpos++;
@@ -73,14 +81,16 @@ namespace brex {
                     auto esccname = parserGenerateDiagnosticUnicodeEscapeName(c);
                     auto esccode = parserGenerateDiagnosticEscapeCode(c);
                     // TODO: Errors
-                    this->cpos++;
+                    this->advance();
                     return 0;
                 }
-
+                
+                // Validate that the next character is valid UTF-8 or ASCII, depending on Unicode availability.
                 if (unicodeok) {
                     auto encerr = parserValidateUTF8ByteEncoding_SingleChar(this->cpos, this->epos);
                     if (encerr.has_value()) {
                         // TODO: Errors
+                        this->advance();
                         return 0;
                     }
                 }
@@ -88,6 +98,7 @@ namespace brex {
                     auto encerr = parserValidateAllCEncoding_SingleChar(this->cpos, this->epos);
                     if (encerr.has_value()) {
                         // TODO: Errors
+                        this->advance();
                         return 0;
                     }
                 }
@@ -170,11 +181,61 @@ namespace brex {
                     }
                 }
                 else {
-                    RegexChar c = parseRegexChar(this->isUnicode);
-                    ret = new LiteralExpression(c, this->isUnicode);
+                    ret = parseLiteral(this->isUnicode);
+                    // RegexChar c = parseRegexChar(this->isUnicode);
+                    // ret = new LiteralExpression({c}, this->isUnicode);
                 }
 
                 return ret;
+            }
+
+            const GlobExpression* parseLiteral(bool unicodeok) {
+                // Read until we encounter either:
+                //   - A wildcard
+                //   - Substitution (substitution open)
+                //   - The start of inner scope (union open)
+                //   - The end of the current scope (union close/separator or pathsep)
+                //   - End of sequence
+                auto start = this->cpos;
+                size_t length = 0;
+
+                while (!this->isEOS() 
+                    && !this->isScopeChanging()
+                    && !this->isSubstitutionPrefix()) {
+                    // TODO: Printable check? Maybe?
+                    this->advance();
+                    length++;
+                }
+
+                if (unicodeok) {
+                    auto errors = parserValidateUTF8ByteEncoding(start, this->cpos);
+                    if (errors.has_value()) {
+                        // TODO: Errors
+                        return new LiteralExpression({ }, true);
+                    }
+                    
+                    auto codes = unescapeUnicodeRegexLiteral(start, length);
+                    if (!codes.has_value()) {
+                        // TODO: Errors
+                        return new LiteralExpression({ }, true);
+                    } 
+                    
+                    return new LiteralExpression(codes.value(), true);
+                }
+                else {
+                    auto errors = parserValidateAllCEncoding(start, this->cpos);
+                    if (errors.has_value()) {
+                        return new LiteralExpression({ }, false);
+                    }
+
+                    auto codes = unescapeCRegexLiteral(start, length);
+                    if (!codes.has_value()) {
+                        // TODO: Errors
+                        return new LiteralExpression({ }, false);
+                    }
+
+                    return new LiteralExpression(codes.value(), false);
+                }
             }
 
             /**
@@ -194,7 +255,7 @@ namespace brex {
                         // TODO: Errors
                         RegexChar code = 0;
                         this->advance();
-                        return new LiteralExpression(code, this->isUnicode);
+                        return new LiteralExpression({code}, this->isUnicode);
                     }
                 }
 
