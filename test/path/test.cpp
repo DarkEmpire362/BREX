@@ -22,14 +22,13 @@ std::optional<brex::FragmentMachine*> tryCompileGlobUnicode(const std::u8string&
 }
 
 bool accepts_cstr(brex::FragmentMachine* machine, const std::string& test) {
-    return brex::match(machine, test, false);
+    brex::CString str(test);
+    return brex::CGlobExecutor(machine).match(&str);
 }
 
 bool accepts_unicode(brex::FragmentMachine* machine, const std::u8string& test) {
-    // TODO: Make this not convert u8 to non-u8 (Template for Executor class)
-    std::string btest(test.begin(), test.end());
-    std::cout << btest << std::endl;
-    return brex::match(machine, btest, true);
+    brex::UnicodeString str(test);
+    return brex::UnicodeGlobExecutor(machine).match(&str);
 }
 
 #define ACCEPTS_CSTR(RE, STR) { BOOST_CHECK(accepts_cstr(RE, STR)); }

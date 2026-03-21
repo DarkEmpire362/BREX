@@ -38,8 +38,8 @@ REGEX_HEADERS=$(RE_DIR)brex_system.h $(RE_DIR)brex.h $(RE_DIR)brex_parser.h $(RE
 REGEX_SOURCES=$(RE_DIR)brex_compiler.cpp $(RE_DIR)nfa_machine.cpp
 REGEX_OBJS=$(OUT_OBJ)brex_compiler.o $(OUT_OBJ)nfa_machine.o
 
-PATH_HEADERS=$(PTH_DIR)glob.h $(PTH_DIR)glob_parser.h $(PTH_DIR)glob_compiler.h $(PTH_DIR)glob_executor.h
-PATH_SOURCES=$(PTH_DIR)glob_compiler.cpp
+PATH_HEADERS=$(PTH_DIR)glob.h $(PTH_DIR)glob_parser.h $(PTH_DIR)glob_compiler.h $(PTH_DIR)glob_executor.h $(PTH_DIR)glob_machine.h
+PATH_SOURCES=$(PTH_DIR)glob_compiler.cpp $(PTH_DIR)glob_machine.cpp
 PATH_OBJS=$(OUT_OBJ)glob_compiler.o
 
 REGEX_TEST_SOURCES=$(REGEX_TEST_SRC_DIR)main.cpp $(REGEX_TEST_SRC_DIR)validate_string.cpp $(REGEX_TEST_SRC_DIR)parsing_ok.cpp $(REGEX_TEST_SRC_DIR)parsing_err.cpp $(REGEX_TEST_SRC_DIR)test.cpp $(REGEX_TEST_SRC_DIR)other_ops.cpp $(REGEX_TEST_SRC_DIR)docs.cpp $(REGEX_TEST_SRC_DIR)system.cpp $(REGEX_TEST_SRC_DIR)bsqir.cpp

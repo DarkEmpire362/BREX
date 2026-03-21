@@ -297,7 +297,7 @@ namespace brex {
             }
 
             static Glob* parseGlobUnicodeString(const std::u8string& str) {
-                return GlobParser::parseGlob((uint8_t*) str.data(), str.length(), false);
+                return GlobParser::parseGlob((uint8_t*) str.data(), str.length(), true);
             }
     };
 }
