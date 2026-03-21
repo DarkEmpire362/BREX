@@ -6,14 +6,19 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
-    std::u8string str = u8"🥒";
-    // auto glob = brex::GlobParser::parseGlob((uint8_t*) str.data(), str.length(), true);
-    auto glob = brex::GlobParser::parseGlobUnicodeString(str);
+    std::string str = "*a*";
+    auto glob = brex::GlobParser::parseGlobCString(str);
+    
+    // std::u8string str = "";
+    // auto glob = brex::GlobParser::parseGlobUnicodeString(str);
+
     auto compiled_glob = brex::GlobCompiler::compile(glob);
-    // auto machine = compiled_glob;
     std::cout << glob->toBSQStandard() << std::endl;
-    // std::cout << "_" << std::endl;
-    brex::UnicodeString test_str(u8"🥒");
-    // brex::CString test_str("cucumber/worm");
-    std::cout << (int) (brex::UnicodeGlobExecutor(compiled_glob).match(&test_str)) << std::endl;
+
+    brex::CString test_str("a");
+    std::cout << ((brex::CompiledExpressionFragment*) compiled_glob->states[0])->exprMachine->stringify() << std::endl;
+    std::cout << (int) brex::CGlobExecutor(compiled_glob).match(&test_str) << std::endl;
+
+    // brex::UnicodeString test_str(u8"🥒");
+    // std::cout << (int) (brex::UnicodeGlobExecutor(compiled_glob).match(&test_str)) << std::endl;
 }

@@ -27,7 +27,7 @@ namespace brex {
                 size_t backtrack_point = 0;
                 bool backtrack_available;
 
-                while (it.valid()) {
+                do {
                     if (current_state == final_state) {
                         if (backtrack_available) {
                             current_state = backtrack_point;
@@ -36,13 +36,14 @@ namespace brex {
                             return false;
                         }
                     }
-
-                    RegexChar current = it.get();
-                    if (current == this->pathsep) {
-                        it.inc();
-                        continue;
-                    }
-
+                    
+                    // I don't think this is needed anymore but I'm keeping it until all tests are written.
+                    // RegexChar current = it.get();
+                    // if (current == this->pathsep) {
+                    //     it.inc();
+                    //     continue;
+                    // }
+                    
                     if (machine->states[current_state]->tag == GlobFragmentTag::RecursiveWildcard) {
                         current_state++;
                         backtrack_point = current_state;
@@ -60,7 +61,7 @@ namespace brex {
                             return false;
                         }
                     }
-                }                
+                } while (it.valid());
                 return current_state == final_state;
             }
         private:

@@ -201,7 +201,8 @@ namespace brex {
 
                 while (!this->isEOS() 
                     && !this->isScopeChanging()
-                    && !this->isSubstitutionPrefix()) {
+                    && !this->isSubstitutionPrefix()
+                    && !this->isToken(BREX_GLOB_WILDCARD)) {
                     // TODO: Printable check? Maybe?
                     this->advance();
                     length++;
