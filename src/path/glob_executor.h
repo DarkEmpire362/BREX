@@ -61,7 +61,9 @@ namespace brex {
                             return false;
                         }
                     }
-                } while (it.valid());
+                // If we hit end of string we can't keep matching.
+                // By the time we get here, if our backtrack point is ever the final state, the string is guaranteed to match.
+                } while (it.valid() && backtrack_point != final_state);
                 return current_state == final_state;
             }
         private:
@@ -75,6 +77,7 @@ namespace brex {
                 while (it->valid()) {
                     RegexChar curr = it->get();
                     if (curr == this->pathsep) {
+                        it->inc();
                         break;
                     }
 

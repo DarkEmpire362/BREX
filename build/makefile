@@ -102,7 +102,7 @@ test: testfiles
 	$(BIN_DIR)regex_test --report_level=short --color_output
 
 glob_test: glob_testfiles
-	$(BIN_DIR)path_test --report_level=detailed --color_output
+	$(BIN_DIR)path_test --report_level=short --color_output
 
 clean:
 	rm -rf $(OUT_EXE)* $(OUT_OBJ)*.o $(BIN_DIR)*

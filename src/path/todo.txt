@@ -1,0 +1,5 @@
+Work Items remaining:
+ - Error Reporting (Parse, Compile, and Run times)
+ - Compiler Output for GlobExecutor instead of raw State Machine
+   - Compiler Level Support for Linking Substitutions after primary state machine has been compiled.
+ - Automated Substitution Tests

@@ -106,7 +106,10 @@ BOOST_AUTO_TEST_SUITE(Glob)
 
                 auto mach = glob.value();
                 REJECTS_UNICODE(mach, u8"");
+                REJECTS_UNICODE(mach, u8"%_");
+                REJECTS_UNICODE(mach, u8"_a");
                 ACCEPTS_UNICODE(mach, u8"%_a");
+                REJECTS_UNICODE(mach, u8"%_b");
             }
 
             BOOST_AUTO_TEST_CASE(cucumber) {
@@ -120,6 +123,9 @@ BOOST_AUTO_TEST_SUITE(Glob)
             }
         BOOST_AUTO_TEST_SUITE_END()
     BOOST_AUTO_TEST_SUITE_END()
+    
+    // Correctness of Sequence behavior is tested by this as well. 
+    // *a is a sequence of { WILDCARD, LITERAL("a") }
     BOOST_AUTO_TEST_SUITE(Wildcard)
         BOOST_AUTO_TEST_SUITE(CString)
             BOOST_AUTO_TEST_CASE(singlewild) {
@@ -146,13 +152,458 @@ BOOST_AUTO_TEST_SUITE(Glob)
                 ACCEPTS_CSTR(mach, "banana");
             }
 
-            BOOST_AUTO_TEST_CASE(doublewild) {
+            BOOST_AUTO_TEST_CASE(wildsuffixed) {
+                auto glob = tryCompileGlobC("a*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "ab");
+                ACCEPTS_CSTR(mach, "apple");
+                REJECTS_CSTR(mach, "banana");
+            }
+
+            BOOST_AUTO_TEST_CASE(contains) {
                 auto glob = tryCompileGlobC("*a*");
                 BOOST_CHECK(glob.has_value());
 
                 auto mach = glob.value();
-                ACCEPTS_CSTR(mach, "a");
+                REJECTS_CSTR(mach, "")
                 REJECTS_CSTR(mach, "b");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "ba");
+                ACCEPTS_CSTR(mach, "ab");
+                ACCEPTS_CSTR(mach, "banana");
+            }
+        BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_SUITE(Unicode)
+            BOOST_AUTO_TEST_CASE(single_wild) {
+                auto glob = tryCompileGlobUnicode(u8"*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"abc");
+                ACCEPTS_UNICODE(mach, u8"a somewhat large number of characters in one fragment")
+                ACCEPTS_UNICODE(mach, u8"*");
+                ACCEPTS_UNICODE(mach, u8"🍎");
+                ACCEPTS_UNICODE(mach, u8"🍌");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_prefixed) {
+                auto glob = tryCompileGlobUnicode(u8"*a");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                REJECTS_UNICODE(mach, u8"b");
+                REJECTS_UNICODE(mach, u8"ab");
+                ACCEPTS_UNICODE(mach, u8"ba");
+                ACCEPTS_UNICODE(mach, u8"banana");
+                REJECTS_UNICODE(mach, u8"apple");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_suffixed) {
+                auto glob = tryCompileGlobUnicode(u8"a*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                REJECTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"ab");
+                REJECTS_UNICODE(mach, u8"ba");
+                REJECTS_UNICODE(mach, u8"banana");
+                ACCEPTS_UNICODE(mach, u8"apple");
+            }
+
+            BOOST_AUTO_TEST_CASE(contains) {
+                auto glob = tryCompileGlobUnicode(u8"*a*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"")
+                REJECTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"ba");
+                ACCEPTS_UNICODE(mach, u8"ab");
+                ACCEPTS_UNICODE(mach, u8"banana");
+            }
+        BOOST_AUTO_TEST_SUITE_END()
+    BOOST_AUTO_TEST_SUITE_END()
+    
+    BOOST_AUTO_TEST_SUITE(Union)
+        BOOST_AUTO_TEST_SUITE(CString)
+            BOOST_AUTO_TEST_CASE(basic_or) {
+                auto glob = tryCompileGlobC("(a|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                REJECTS_CSTR(mach, "c");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "b");
+                REJECTS_CSTR(mach, "(a|b)");
+            }
+
+            BOOST_AUTO_TEST_CASE(multi_or) {
+                auto glob = tryCompileGlobC("(a|b|c|d)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "b");
+                ACCEPTS_CSTR(mach, "c");
+                ACCEPTS_CSTR(mach, "d");
+                REJECTS_CSTR(mach, "ab");
+                REJECTS_CSTR(mach, "abcd");
+            }
+
+            BOOST_AUTO_TEST_CASE(empty_or) {
+                auto glob = tryCompileGlobC("(|a)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested_wild) {
+                auto glob = tryCompileGlobC("(*a*|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "b");
+                ACCEPTS_CSTR(mach, "ab");
+                ACCEPTS_CSTR(mach, "bab");
+                ACCEPTS_CSTR(mach, "there is \"a\"");
+                REJECTS_CSTR(mach, "no first vowel");
+            }
+
+            BOOST_AUTO_TEST_CASE(or_prefix) {
+                auto glob = tryCompileGlobC("(log|debug).txt");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "log.txt");
+                ACCEPTS_CSTR(mach, "debug.txt");
+                REJECTS_CSTR(mach, ".txt");
+            }
+
+            BOOST_AUTO_TEST_CASE(or_suffix) {
+                auto glob = tryCompileGlobC("note.(pdf|docx)");
+                BOOST_CHECK(glob.has_value());
+                
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "note.pdf");
+                ACCEPTS_CSTR(mach, "note.docx");
+                REJECTS_CSTR(mach, "note.");
+            }
+
+            BOOST_AUTO_TEST_CASE(interior_or) {
+                auto glob = tryCompileGlobC("w(o|y)rm");
+                BOOST_CHECK(glob.has_value());
+                
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "worm");
+                ACCEPTS_CSTR(mach, "wyrm");
+                REJECTS_CSTR(mach, "wrm");
+                REJECTS_CSTR(mach, "woyrm");
+                REJECTS_CSTR(mach, "wyorm");
+                REJECTS_CSTR(mach, "orm");
+            }
+
+            BOOST_AUTO_TEST_CASE(wrapped_by_or) {
+                auto glob = tryCompileGlobC("(glob|brex)_compiler.(h|cpp)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "glob_compiler.h");
+                ACCEPTS_CSTR(mach, "glob_compiler.cpp");
+                ACCEPTS_CSTR(mach, "brex_compiler.h");
+                ACCEPTS_CSTR(mach, "brex_compiler.cpp");
+                REJECTS_CSTR(mach, "blob_compiler.hpp");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested_or) {
+                auto glob = tryCompileGlobC("w(yvern|(o|y)rm)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "wyvern");
+                ACCEPTS_CSTR(mach, "worm");
+                ACCEPTS_CSTR(mach, "wyrm");
+                REJECTS_CSTR(mach, "wyvernorm");
+                REJECTS_CSTR(mach, "wyvernrm");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_flanked_or_left) {
+                auto glob = tryCompileGlobC("*(a|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "b");
+                ACCEPTS_CSTR(mach, "123a");
+                ACCEPTS_CSTR(mach, "123b");
+                REJECTS_CSTR(mach, "123");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_flanked_or_right) {
+                auto glob = tryCompileGlobC("(a|b)*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "b");
+                ACCEPTS_CSTR(mach, "a123");
+                ACCEPTS_CSTR(mach, "b123");
+                REJECTS_CSTR(mach, "123");
+            }
+        BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_SUITE(Unicode) 
+            BOOST_AUTO_TEST_CASE(basic_or) {
+                auto glob = tryCompileGlobUnicode(u8"(a|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                REJECTS_UNICODE(mach, u8"c");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"b");
+                REJECTS_UNICODE(mach, u8"(a|b)");
+            }
+
+            BOOST_AUTO_TEST_CASE(multi_or) {
+                auto glob = tryCompileGlobUnicode(u8"(a|b|c|d)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"c");
+                ACCEPTS_UNICODE(mach, u8"d");
+                REJECTS_UNICODE(mach, u8"ab");
+                REJECTS_UNICODE(mach, u8"abcd");
+            }
+
+            BOOST_AUTO_TEST_CASE(empty_or) {
+                auto glob = tryCompileGlobUnicode(u8"(|a)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested_wild) {
+                auto glob = tryCompileGlobUnicode(u8"(*a*|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"ab");
+                ACCEPTS_UNICODE(mach, u8"bab");
+                ACCEPTS_UNICODE(mach, u8"there is \"a\"");
+                REJECTS_UNICODE(mach, u8"no first vowel");
+            }
+
+            BOOST_AUTO_TEST_CASE(or_prefix) {
+                auto glob = tryCompileGlobUnicode(u8"(log|debug).txt");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"log.txt");
+                ACCEPTS_UNICODE(mach, u8"debug.txt");
+                REJECTS_UNICODE(mach, u8".txt");
+            }
+
+            BOOST_AUTO_TEST_CASE(or_suffix) {
+                auto glob = tryCompileGlobUnicode(u8"note.(pdf|docx)");
+                BOOST_CHECK(glob.has_value());
+                
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"note.pdf");
+                ACCEPTS_UNICODE(mach, u8"note.docx");
+                REJECTS_UNICODE(mach, u8"note.");
+            }
+
+            BOOST_AUTO_TEST_CASE(interior_or) {
+                auto glob = tryCompileGlobUnicode(u8"w(o|y)rm");
+                BOOST_CHECK(glob.has_value());
+                
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"worm");
+                ACCEPTS_UNICODE(mach, u8"wyrm");
+                REJECTS_UNICODE(mach, u8"wrm");
+                REJECTS_UNICODE(mach, u8"woyrm");
+                REJECTS_UNICODE(mach, u8"wyorm");
+                REJECTS_UNICODE(mach, u8"orm");
+            }
+
+            BOOST_AUTO_TEST_CASE(wrapped_by_or) {
+                auto glob = tryCompileGlobUnicode(u8"(glob|brex)_compiler.(h|cpp)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"glob_compiler.h");
+                ACCEPTS_UNICODE(mach, u8"glob_compiler.cpp");
+                ACCEPTS_UNICODE(mach, u8"brex_compiler.h");
+                ACCEPTS_UNICODE(mach, u8"brex_compiler.cpp");
+                REJECTS_UNICODE(mach, u8"blob_compiler.hpp");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested_or) {
+                auto glob = tryCompileGlobUnicode(u8"w(yvern|(o|y)rm)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"wyvern");
+                ACCEPTS_UNICODE(mach, u8"worm");
+                ACCEPTS_UNICODE(mach, u8"wyrm");
+                REJECTS_UNICODE(mach, u8"wyvernorm");
+                REJECTS_UNICODE(mach, u8"wyvernrm");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_flanked_or_left) {
+                auto glob = tryCompileGlobUnicode(u8"*(a|b)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"123a");
+                ACCEPTS_UNICODE(mach, u8"123b");
+                REJECTS_UNICODE(mach, u8"123");
+            }
+
+            BOOST_AUTO_TEST_CASE(wild_flanked_or_right) {
+                auto glob = tryCompileGlobUnicode(u8"(a|b)*");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"b");
+                ACCEPTS_UNICODE(mach, u8"a123");
+                ACCEPTS_UNICODE(mach, u8"b123");
+                REJECTS_UNICODE(mach, u8"123");
+            }
+        BOOST_AUTO_TEST_SUITE_END()
+    BOOST_AUTO_TEST_SUITE_END()
+
+    BOOST_AUTO_TEST_SUITE(Paths)
+        BOOST_AUTO_TEST_SUITE(CString)
+            BOOST_AUTO_TEST_CASE(basic_path) {
+                auto glob = tryCompileGlobC("a/b/c/d");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                REJECTS_CSTR(mach, "a");
+                REJECTS_CSTR(mach, "a/b");
+                REJECTS_CSTR(mach, "a/b/c");
+                ACCEPTS_CSTR(mach, "a/b/c/d");
+                REJECTS_CSTR(mach, "abcd");
+                REJECTS_CSTR(mach, "a/b/cd");
+                REJECTS_CSTR(mach, "a/c/b/d");
+            }
+
+            BOOST_AUTO_TEST_CASE(recursive_wildcard) {
+                auto glob = tryCompileGlobC("**");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a");
+                ACCEPTS_CSTR(mach, "I can put whatever I want");
+                ACCEPTS_CSTR(mach, "I/can/even/put/it/in/a/directory/structure");
+            }
+
+            BOOST_AUTO_TEST_CASE(interior_recursive_wildcard) {
+                auto glob = tryCompileGlobC("a/b/**/c/d");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_CSTR(mach, "");
+                ACCEPTS_CSTR(mach, "a/b/c/d");
+                ACCEPTS_CSTR(mach, "a/b/e/e/e/c/d");
+                ACCEPTS_CSTR(mach, "a/b/c/d/c/d");
+            }
+
+            BOOST_AUTO_TEST_CASE(comprehensive_path) {
+                auto glob = tryCompileGlobC("path/to/(some|your)/file(|s)/**/(report|notes)_*.(txt|md|pdf|docx)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_CSTR(mach, "path/to/some/file/called/report_1234.md");
+                ACCEPTS_CSTR(mach, "path/to/your/files/notes_january26.pdf");
+                ACCEPTS_CSTR(mach, "path/to/your/file/report_.docx")
+                REJECTS_CSTR(mach, "path/to/a/diffent/file/that/I/didn't/give/you/permissions/for/notes_personal.docx");
+                ACCEPTS_CSTR(mach, "path/to/some/files/report_2/report_2.docx");
+                ACCEPTS_CSTR(mach, "path/to/some/files/report_2/report_2.pdf");
+            }
+
+        BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_SUITE(Unicode)
+            BOOST_AUTO_TEST_CASE(basic_path) {
+                auto glob = tryCompileGlobUnicode(u8"a/b/c/d");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                REJECTS_UNICODE(mach, u8"a");
+                REJECTS_UNICODE(mach, u8"a/b");
+                REJECTS_UNICODE(mach, u8"a/b/c");
+                ACCEPTS_UNICODE(mach, u8"a/b/c/d");
+                REJECTS_UNICODE(mach, u8"abcd");
+                REJECTS_UNICODE(mach, u8"a/b/cd");
+                REJECTS_UNICODE(mach, u8"a/c/b/d");
+            }
+
+            BOOST_AUTO_TEST_CASE(recursive_wildcard) {
+                auto glob = tryCompileGlobUnicode(u8"**");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a");
+                ACCEPTS_UNICODE(mach, u8"I can put whatever I want");
+                ACCEPTS_UNICODE(mach, u8"I/can/even/put/it/in/a/directory/structure");
+            }
+
+            BOOST_AUTO_TEST_CASE(interior_recursive_wildcard) {
+                auto glob = tryCompileGlobUnicode(u8"a/b/**/c/d");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                REJECTS_UNICODE(mach, u8"");
+                ACCEPTS_UNICODE(mach, u8"a/b/c/d");
+                ACCEPTS_UNICODE(mach, u8"a/b/e/e/e/c/d");
+                ACCEPTS_UNICODE(mach, u8"a/b/c/d/c/d");
+            }
+
+            BOOST_AUTO_TEST_CASE(comprehensive_path) {
+                auto glob = tryCompileGlobUnicode(u8"path/to/(some|your)/file(|s)/**/(report|notes)_*.(txt|md|pdf|docx)");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                ACCEPTS_UNICODE(mach, u8"path/to/some/file/called/report_1234.md");
+                ACCEPTS_UNICODE(mach, u8"path/to/your/files/notes_january26.pdf");
+                ACCEPTS_UNICODE(mach, u8"path/to/your/file/report_.docx")
+                REJECTS_UNICODE(mach, u8"path/to/a/diffent/file/that/I/didn't/give/you/permissions/for/notes_personal.docx");
+                ACCEPTS_UNICODE(mach, u8"path/to/some/files/report_2/report_2.docx");
+                ACCEPTS_UNICODE(mach, u8"path/to/some/files/report_2/report_2.pdf");
             }
         BOOST_AUTO_TEST_SUITE_END()
     BOOST_AUTO_TEST_SUITE_END()

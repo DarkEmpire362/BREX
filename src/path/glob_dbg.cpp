@@ -6,7 +6,7 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
-    std::string str = "*a*";
+    std::string str = "**";
     auto glob = brex::GlobParser::parseGlobCString(str);
     
     // std::u8string str = "";
@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     std::cout << glob->toBSQStandard() << std::endl;
 
     brex::CString test_str("a");
-    std::cout << ((brex::CompiledExpressionFragment*) compiled_glob->states[0])->exprMachine->stringify() << std::endl;
+    // std::cout << ((brex::CompiledExpressionFragment*) compiled_glob->states[3])->exprMachine->stringify() << std::endl;
     std::cout << (int) brex::CGlobExecutor(compiled_glob).match(&test_str) << std::endl;
 
     // brex::UnicodeString test_str(u8"🥒");
