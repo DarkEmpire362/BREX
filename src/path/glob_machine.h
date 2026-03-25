@@ -104,7 +104,6 @@ namespace brex {
 
             ExpressionMachine(std::set<size_t>* start_states, std::vector<const CompiledState*> states) : start_states(start_states), states(states) {;}
 
-            // TODO: See section header
             void link(std::u8string symbol, ExpressionMachine* machine);
 
             std::string stringify(std::string prefix = "") const {
@@ -154,7 +153,6 @@ namespace brex {
             std::vector<const CompiledFragment*> states;
             FragmentMachine(std::vector<const CompiledFragment*> states) : states(states) {;}
 
-            // TODO: See section header
             void link(std::u8string symbol, ExpressionMachine* machine);
     };
 }

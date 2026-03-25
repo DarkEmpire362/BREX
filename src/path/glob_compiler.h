@@ -2,11 +2,12 @@
 
 #include "../common.h"
 #include "glob_machine.h"
+#include "glob_executor.h"
 
 namespace brex {
     // == Compiler Levels ==
 
-    class ExpressionCompiler {
+    class GlobExpressionCompiler {
         private:
             // const GlobExpression* data;
             size_t max_index;
@@ -20,8 +21,8 @@ namespace brex {
             std::set<size_t>* compileSubstitution(SubstitutionExpression* expr, std::set<size_t>* next_states);
         
         public:
-            ExpressionCompiler(/*GlobExpression* data*/) : /* data(data),*/ max_index(0), states(std::vector<const CompiledState*>({new WildcardState(nullptr, nullptr)})) {;}
-            virtual ~ExpressionCompiler() = default;
+            GlobExpressionCompiler(/*GlobExpression* data*/) : /* data(data),*/ max_index(0), states(std::vector<const CompiledState*>({new WildcardState(nullptr, nullptr)})) {;}
+            virtual ~GlobExpressionCompiler() = default;
             static ExpressionMachine* compile(const GlobExpression* expr);
     };
 
@@ -32,7 +33,6 @@ namespace brex {
         public:
             GlobCompiler() : states(std::vector<const CompiledFragment*>()) {;}
            
-            // TODO: Replace void with an unlinked state machine type
             static FragmentMachine* compile(Glob* glob);
     };
 }

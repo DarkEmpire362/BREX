@@ -2,8 +2,6 @@
 
 #include "../common.h"
 #include "glob.h"
-#include "glob_compiler.h"
-// #include <iostream>
 
 namespace brex {
     template <typename TStr, typename TIter>
@@ -14,6 +12,7 @@ namespace brex {
 
             bool match(TStr* str) {
                 size_t final_state = machine->states.size();
+                
                 // If the size of the machine is zero, just return whether or
                 // not the length of the string is zero, if it isn't that's an
                 // instant fail.
@@ -36,13 +35,6 @@ namespace brex {
                             return false;
                         }
                     }
-                    
-                    // I don't think this is needed anymore but I'm keeping it until all tests are written.
-                    // RegexChar current = it.get();
-                    // if (current == this->pathsep) {
-                    //     it.inc();
-                    //     continue;
-                    // }
                     
                     if (machine->states[current_state]->tag == GlobFragmentTag::RecursiveWildcard) {
                         current_state++;

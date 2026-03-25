@@ -13,11 +13,23 @@ std::optional<brex::FragmentMachine*> tryCompileGlobC(const std::string& globstr
     return std::make_optional(machine);
 }
 
+std::optional<brex::ExpressionMachine*> tryCompileGlobExpressionC(const std::string& globstr) {
+    auto ast = brex::GlobParser::parseGlobExpressionCString(globstr);
+    auto machine = brex::GlobExpressionCompiler::compile(ast);
+    return std::make_optional(machine);
+}
+
 std::optional<brex::FragmentMachine*> tryCompileGlobUnicode(const std::u8string& globstr) {
     auto ast = brex::GlobParser::parseGlobUnicodeString(globstr);
     // TODO: Check Errs
     auto machine = brex::GlobCompiler::compile(ast);
     // TODO: Check Errs
+    return std::make_optional(machine);
+}
+
+std::optional<brex::ExpressionMachine*> tryCompileGlobExpressionUnicode(const std::u8string& globstr) {
+    auto ast = brex::GlobParser::parseGlobExpressionUnicodeString(globstr);
+    auto machine = brex::GlobExpressionCompiler::compile(ast);
     return std::make_optional(machine);
 }
 
@@ -501,6 +513,173 @@ BOOST_AUTO_TEST_SUITE(Glob)
         BOOST_AUTO_TEST_SUITE_END()
     BOOST_AUTO_TEST_SUITE_END()
 
+    BOOST_AUTO_TEST_SUITE(Substitution)
+        BOOST_AUTO_TEST_SUITE(CString)
+            BOOST_AUTO_TEST_CASE(substitution) {
+                auto segment = tryCompileGlobExpressionC("abc");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobC("${segment}");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+                
+                REJECTS_CSTR(mach, "${segment}");
+                REJECTS_CSTR(mach, "segment");
+                ACCEPTS_CSTR(mach, "abc");
+            }
+
+            BOOST_AUTO_TEST_CASE(in_middle) {
+                auto segment = tryCompileGlobExpressionC("banana");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobC("apple${segment}coconut");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                REJECTS_CSTR(mach, "applecoconut");
+                REJECTS_CSTR(mach, "apple${segment}coconut");
+                ACCEPTS_CSTR(mach, "applebananacoconut");
+            }
+
+            BOOST_AUTO_TEST_CASE(with_wild) {
+                auto segment = tryCompileGlobExpressionC("*");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobC("apple${segment}coconut");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_CSTR(mach, "applecoconut");
+                ACCEPTS_CSTR(mach, "applebananacoconut");
+                ACCEPTS_CSTR(mach, "apple${segment}coconut");
+            }
+
+            BOOST_AUTO_TEST_CASE(with_union) {
+                auto segment = tryCompileGlobExpressionC("(b|q)");
+                BOOST_CHECK(segment.has_value());
+                auto glob = tryCompileGlobC("a${segment}c");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_CSTR(mach, "abc");
+                ACCEPTS_CSTR(mach, "aqc");
+                REJECTS_CSTR(mach, "ac");
+                REJECTS_CSTR(mach, "a(b|q)c");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested) {
+                auto inner_segment = tryCompileGlobExpressionC("worm");
+                BOOST_CHECK(inner_segment.has_value());
+                auto segment = tryCompileGlobExpressionC("${inner_segment}");
+                BOOST_CHECK(segment.has_value());
+
+                segment.value()->link(u8"inner_segment", inner_segment.value());
+
+                auto glob = tryCompileGlobC("a${segment}c");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_CSTR(mach, "awormc");
+                REJECTS_CSTR(mach, "ac");
+                REJECTS_CSTR(mach, "a${inner_segment}c");
+            }
+
+        BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_SUITE(Unicode)
+            BOOST_AUTO_TEST_CASE(substitution) {
+                auto segment = tryCompileGlobExpressionUnicode(u8"abc");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobUnicode(u8"${segment}");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+                
+                REJECTS_UNICODE(mach, u8"${segment}");
+                REJECTS_UNICODE(mach, u8"segment");
+                ACCEPTS_UNICODE(mach, u8"abc");
+            }
+
+            BOOST_AUTO_TEST_CASE(in_middle) {
+                auto segment = tryCompileGlobExpressionUnicode(u8"banana");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobUnicode(u8"apple${segment}coconut");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                REJECTS_UNICODE(mach, u8"applecoconut");
+                REJECTS_UNICODE(mach, u8"apple${segment}coconut");
+                ACCEPTS_UNICODE(mach, u8"applebananacoconut");
+            }
+
+            BOOST_AUTO_TEST_CASE(with_wild) {
+                auto segment = tryCompileGlobExpressionUnicode(u8"*");
+                BOOST_CHECK(segment.has_value());
+
+                auto glob = tryCompileGlobUnicode(u8"apple${segment}coconut");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_UNICODE(mach, u8"applecoconut");
+                ACCEPTS_UNICODE(mach, u8"applebananacoconut");
+                ACCEPTS_UNICODE(mach, u8"apple${segment}coconut");
+            }
+
+            BOOST_AUTO_TEST_CASE(with_union) {
+                auto segment = tryCompileGlobExpressionUnicode(u8"(b|q)");
+                BOOST_CHECK(segment.has_value());
+                auto glob = tryCompileGlobUnicode(u8"a${segment}c");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_UNICODE(mach, u8"abc");
+                ACCEPTS_UNICODE(mach, u8"aqc");
+                REJECTS_UNICODE(mach, u8"ac");
+                REJECTS_UNICODE(mach, u8"a(b|q)c");
+            }
+
+            BOOST_AUTO_TEST_CASE(nested) {
+                auto inner_segment = tryCompileGlobExpressionUnicode(u8"🪱");
+                BOOST_CHECK(inner_segment.has_value());
+                auto segment = tryCompileGlobExpressionUnicode(u8"${inner_segment}");
+                BOOST_CHECK(segment.has_value());
+
+                segment.value()->link(u8"inner_segment", inner_segment.value());
+
+                auto glob = tryCompileGlobUnicode(u8"a${segment}c");
+                BOOST_CHECK(glob.has_value());
+
+                auto mach = glob.value();
+                mach->link(u8"segment", segment.value());
+
+                ACCEPTS_UNICODE(mach, u8"a🪱c");
+                REJECTS_UNICODE(mach, u8"ac");
+                REJECTS_UNICODE(mach, u8"a${inner_segment}c");
+            }
+
+        BOOST_AUTO_TEST_SUITE_END()
+
+    BOOST_AUTO_TEST_SUITE_END()
+
     BOOST_AUTO_TEST_SUITE(Paths)
         BOOST_AUTO_TEST_SUITE(CString)
             BOOST_AUTO_TEST_CASE(basic_path) {
@@ -548,6 +727,7 @@ BOOST_AUTO_TEST_SUITE(Glob)
                 ACCEPTS_CSTR(mach, "path/to/some/file/called/report_1234.md");
                 ACCEPTS_CSTR(mach, "path/to/your/files/notes_january26.pdf");
                 ACCEPTS_CSTR(mach, "path/to/your/file/report_.docx")
+                REJECTS_CSTR(mach, "path/to/your/file/report_2.docx/but/wait/there's/more")
                 REJECTS_CSTR(mach, "path/to/a/diffent/file/that/I/didn't/give/you/permissions/for/notes_personal.docx");
                 ACCEPTS_CSTR(mach, "path/to/some/files/report_2/report_2.docx");
                 ACCEPTS_CSTR(mach, "path/to/some/files/report_2/report_2.pdf");
@@ -601,6 +781,7 @@ BOOST_AUTO_TEST_SUITE(Glob)
                 ACCEPTS_UNICODE(mach, u8"path/to/some/file/called/report_1234.md");
                 ACCEPTS_UNICODE(mach, u8"path/to/your/files/notes_january26.pdf");
                 ACCEPTS_UNICODE(mach, u8"path/to/your/file/report_.docx")
+                REJECTS_UNICODE(mach, u8"path/to/your/file/report_.docx/but/wait/there's/more")
                 REJECTS_UNICODE(mach, u8"path/to/a/diffent/file/that/I/didn't/give/you/permissions/for/notes_personal.docx");
                 ACCEPTS_UNICODE(mach, u8"path/to/some/files/report_2/report_2.docx");
                 ACCEPTS_UNICODE(mach, u8"path/to/some/files/report_2/report_2.pdf");

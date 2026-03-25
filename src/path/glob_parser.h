@@ -286,8 +286,23 @@ namespace brex {
                 return fragments;
             }
 
-            // TODO: Expose another static function returning a GlobExpression
-            // for handling compilation of substitution segments.
+            static const GlobExpression* parseGlobExpression(uint8_t* data, size_t datalen, bool is_unicode) {
+                auto parser = GlobParser(data, datalen, is_unicode);
+                auto seq = parser.parseExprSequence();
+                if (!parser.isEOS()) {
+                    // TODO: Errors
+                }
+                return seq;
+            }
+
+            static const GlobExpression* parseGlobExpressionCString(const std::string& str) {
+                return GlobParser::parseGlobExpression((uint8_t*) str.data(), str.length(), false);
+            }
+
+            static const GlobExpression* parseGlobExpressionUnicodeString(const std::u8string& str) {
+                return GlobParser::parseGlobExpression((uint8_t*) str.data(), str.length(), true);
+            }
+
             static Glob* parseGlob(uint8_t* data, size_t datalen, bool is_unicode) {
                 auto parser = GlobParser(data, datalen, is_unicode);
                 return new Glob(parser.parseGlobFragments());

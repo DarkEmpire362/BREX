@@ -1,4 +1,5 @@
 #include "glob_machine.h"
+#include <iostream>
 
 namespace brex {
     void ExpressionMachine::link(std::u8string symbol, ExpressionMachine* machine) {
@@ -33,6 +34,11 @@ namespace brex {
         // Start states for the machine we're introducing
         std::set<size_t>* new_starts = machine->start_states;
 
+        // for (auto it = new_starts->begin(); it != new_starts->end(); it++) {
+        //     std::cout << *it << " ";
+        // }
+        // std::cout << std::endl;
+
         // Phase 1: Merge the state machines. Add all states from `machine` to
         // `this`. This first loop should create an array matching old state ids
         // to new state ids.
@@ -52,34 +58,46 @@ namespace brex {
         // Phase 2: Loop through added states. Replace all old state ids with
         // new state ids. Replace the final state from `machine` (state 0) with
         // the next states of the one we're replacing
-
+        
         size_t k = this->states.size();
         for (size_t i = n; i < k; i++) {
             // If next states contains 'machine's final state, update to the
             // next_states of the new machine.
-            if (this->states[i]->next_states->contains(0)) {
+            std::set<size_t>* update_next = new std::set<size_t>();
+            std::set<size_t>* update_default = new std::set<size_t>();
+            if (this->states[i]->next_states != nullptr && this->states[i]->next_states->contains(0)) {
                 this->states[i]->next_states->erase(0);
                 for (auto s = next->cbegin(); s != next->cend(); s++) {
-                    this->states[i]->next_states->insert(*s);
+                    update_next->insert(*s);
                 }
             }
             // Same as above, but for default_states
-            if (this->states[i]->default_states->contains(0)) {
+            if (this->states[i]->default_states != nullptr && this->states[i]->default_states->contains(0)) {
                 this->states[i]->default_states->erase(0);
                 for (auto s = next->cbegin(); s != next->cend(); s++) {
-                    this->states[i]->default_states->insert(*s);
+                    update_default->insert(*s);
                 }
             }
 
             // Loop from 1 to k-n, if the set contains 'j', swap it with map[j]
             for (size_t j = 1; j < machine->states.size(); j++) {
-                if (this->states[i]->next_states->contains(j)) {
+                if (this->states[i]->next_states != nullptr && this->states[i]->next_states->contains(j)) {
                     this->states[i]->next_states->erase(j);
-                    this->states[i]->next_states->insert(map[j]);
+                    update_next->insert(map[j]);
                 }
-                if (this->states[i]->default_states->contains(j)) {
+                if (this->states[i]->default_states != nullptr && this->states[i]->default_states->contains(j)) {
                     this->states[i]->default_states->erase(j);
-                    this->states[i]->default_states->insert(map[j]);
+                    update_default->insert(map[j]);
+                }
+            }
+            if (this->states[i]->next_states != nullptr) {
+                for (auto it = update_next->cbegin(); it != update_next->cend(); it++) {
+                    this->states[i]->next_states->insert(*it);
+                }
+            }
+            if (this->states[i]->default_states != nullptr) {
+                for (auto it = update_default->cbegin(); it != update_default->cend(); it++) {
+                    this->states[i]->default_states->insert(*it);
                 }
             }
         }
@@ -112,13 +130,13 @@ namespace brex {
 
         // Replace all instances of `id` with `updated_starts`
         for (size_t i = 0; i < n; i++) {
-            if (this->states[i]->next_states->contains(id)) {
+            if (this->states[i]->next_states != nullptr && this->states[i]->next_states->contains(id)) {
                 this->states[i]->next_states->erase(id);
                 for (auto jt = updated_starts.cbegin(); jt != updated_starts.cend(); jt++) {
                     this->states[i]->next_states->insert(*jt);
                 }
             }
-            if (this->states[i]->default_states->contains(id)) {
+            if (this->states[i]->default_states != nullptr && this->states[i]->default_states->contains(id)) {
                 this->states[i]->default_states->erase(id);
                 for (auto jt = updated_starts.cbegin(); jt != updated_starts.cend(); jt++) {
                     this->states[i]->default_states->insert(*jt);
